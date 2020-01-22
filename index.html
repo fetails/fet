@@ -1,1 +1,34 @@
-<h1>nice</h1>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WebGL &bull; Test #1</title>
+    </head>
+    <body>
+        <center><h4>This page uses WebGL tech.<br />Don't believe me?<br />Check the source! :)<br /><br />-viker</h4>
+        <canvas id="webglex" width="800" height="600"></canvas></center>
+    </body>
+    <script>
+        class ColRGB
+        {
+            constructor(red, green, blue)
+            {
+                this.r = red / 255;
+                this.g = green / 255;
+                this.b = blue / 255;
+            }
+        }
+        var init_webgl = function()
+        {
+            console.log("Test!");
+            var canv = document.getElementById("webglex");
+            var GL = canv.getContext("webgl");
+
+            let clr = new ColRGB(102, 184, 130);
+            let lineclr = new ColRGB(65, 65, 65);
+            GL.clearColor(clr.r, clr.g, clr.b, 1);
+            GL.clear(GL.COLOR_BUFFER_BIT | GL.COLOR_DEPTH_BUFFER_BIT );
+        };
+
+        window.onload = init_webgl;
+    </script>
+</html>
