@@ -2,27 +2,70 @@
 <html>
     <head>
         <link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
-        <title>WebGL &bull; Test #1</title>
+        <script src="js/jquery.min.js"></script>
+        <script src="js/dat.gui.min.js"></script>
+        <script src="js/stats.js"></script>
+        <title>WebGL &bull; Achi</title>
     </head>
     <body>
         <style>
             body, html {
                 background-color: #161616;
                 font-family: 'Lato', sans-serif;
+                margin:0;
+                padding:0;
             }
-
-            .container
-            {
-                padding:5px;
-                color:#d2d2d2;
+            canvas {
+                display:block;
+                width:100%;
+                height:100vh;
             }
         </style>
-        <center><h4 class="container" id="welcome">This page uses WebGL tech.<br /><br />-viker</h4>
-        <canvas id="webglex" width="800" height="600"></canvas></center>
-        <script src="classes.js"></script>
-        <script src="webgl_main.js"></script>
+        <canvas id="webglex"></canvas>
         <script type="text/javascript">
-            window.onload = init_webgl;
+
+        var stats = new Stats();
+        stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+        document.body.appendChild( stats.dom );
+
+        function update_frame_sequence() 
+        {
+        	stats.begin();
+        	stats.end();
+        	requestAnimationFrame( update_frame_sequence );
+        }
+
+        let controllers = function()
+        {
+            this.message = "gui";
+            this.welcome = "This is in early beta stage.";
+            this.bgCol = [ 92, 159, 106, 1.0 ];
+        };
+
+        let create_open_gl = function(ctrl, gl)
+        {
+            gl.clearColor(ctrl.bgCol[0] / 255, ctrl.bgCol[1] / 255, ctrl.bgCol[2] / 255, ctrl.bgCol[3]);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            console.log(ctrl.bgCol);
+
+        };
+
+        window.onload = function()
+        {
+            let gui = new dat.GUI();
+            let ctrl = new controllers();
+            gui.add(ctrl, 'message');
+            gui.add(ctrl, "welcome");
+            gui.addColor(ctrl, "bgCol");
+
+            {
+                let canvas = document.querySelector("#webglex");
+                let gl = canvas.getContext("webgl2");
+                create_open_gl(ctrl, gl);
+            }
+
+            update_frame_sequence();
+        };
         </script>
     </body>
 </html>
