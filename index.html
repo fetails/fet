@@ -1,13 +1,26 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
         <title>WebGL &bull; Test #1</title>
     </head>
     <body>
-        <center><h4>This page uses WebGL tech.<br />Don't believe me?<br />Check the source! :)<br /><br />-viker</h4>
+        <style>
+            body, html {
+                background-color: #161616;
+                font-family: 'Lato', sans-serif;
+            }
+
+            .container
+            {
+                padding:5px;
+                color:#d2d2d2;
+            }
+        </style>
+        <center><h4 class="container">This page uses WebGL tech.<br />Don't believe me?<br />Check the source! :)<br /><br />-viker</h4>
         <canvas id="webglex" width="800" height="600"></canvas></center>
     </body>
-    <script>
+    <script type="text/javascript">
         class ColRGB
         {
             constructor(red, green, blue)
@@ -17,16 +30,130 @@
                 this.b = blue / 255;
             }
         }
+
+        // Skapar IBO & VBO Objekt.
+        class vertex_t
+        {
+            constructor()
+            {
+                this.verts = [
+                    0.0, 0.5, 0.0,
+                    -0.5, -0.5, 0.0,
+                    0.5, -0.5, 0.0
+                ];
+
+                this.indexes = [
+                    0, 1, 2
+                ];
+            }
+        }
+
+        class shader_t
+        {
+            constructor(gl, vertexC, fragmentC)
+            {
+                this.vertex = gl.createShader(gl.VERTEX_SHADER);
+                this.fragment = gl.createShader(gl.FRAGMENT_SHADER);
+
+                gl.shaderSource(this.vertex, vertexC);
+                gl.shaderSource(this.fragment, fragmentC);
+
+                gl.compileShader(this.vertex);
+                if(!gl.getShaderParameter(this.vertex, gl.COMPILE_STATUS))
+                {
+                    console.log("[WebGL] Error compiling vertex: ", gl.getShaderInfoLog(this.vertex));
+                };
+
+                gl.compileShader(this.fragment);
+                if(!gl.getShaderParameter(this.fragment, gl.COMPILE_STATUS))
+                {
+                    console.log("[WebGL] Error compiling fragment: ", gl.getShaderInfoLog(this.fragment));
+                };
+
+                let program = gl.createProgram();
+                gl.attachShader(program, this.vertex);
+                gl.attachShader(program, this.fragment);
+                gl.linkProgram(program);
+                gl.validateProgram(program);
+                gl.deleteShader(this.vertex);
+                gl.deleteShader(this.fragment);
+
+                this.program = program;
+
+                console.log("[WebGL] Created shaders.");
+            }
+        }
         var init_webgl = function()
         {
             console.log("Test!");
             var canv = document.getElementById("webglex");
-            var GL = canv.getContext("webgl");
+            var GL = canv.getContext("webgl2");
 
             let clr = new ColRGB(102, 184, 130);
             let lineclr = new ColRGB(65, 65, 65);
             GL.clearColor(clr.r, clr.g, clr.b, 1);
             GL.clear(GL.COLOR_BUFFER_BIT | GL.COLOR_DEPTH_BUFFER_BIT );
+            GL.viewport(0, 0, canv.width, canv.height);
+            let strides = new vertex_t();
+            let vertex_buffer = GL.createBuffer();
+
+            GL.bindBuffer(GL.ARRAY_BUFFER, vertex_buffer);
+           
+            // Använd Float32Array from WebASM/WebAssembly->WebKIT
+            GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(strides.verts), GL.STATIC_DRAW);
+            console.log("[WebGL] Buffer data has been bound.");
+
+            // Av-bind buffern. (Un-Bind)
+            GL.bindBuffer(GL.ARRAY_BUFFER, null);
+
+            // ----- IBO ------ //
+
+            let index_buffer = GL.createBuffer();
+
+            GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, index_buffer);
+
+            // Typ samma princip som ovanför, fast att vi använder unsigned int ist för float.
+            GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(strides.indexes), GL.STATIC_DRAW);
+
+            GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+
+            // Draw.
+            var vertCode =
+            '#version 300 es\n' +
+            'in vec3 coords;\n' +
+            'out vec3 send_coords;\n' +
+			'\n' +
+            'void main() {\n' +
+               ' gl_Position = vec4(coords, 1.0);\n' +
+               ' send_coords = coords;\n' +
+            '}';
+
+            var fragCode =
+            '#version 300 es\n'+
+            'precision mediump float;\n'+
+            '\n' +
+            'out vec4 outColor;  // you can pick any name\n' +
+            'in vec3 send_coords;\n' +
+            '\n'+
+            'void main() {\n'+
+            '    outColor = vec4(send_coords.x + 0.25, send_coords.y + 0.25, 0.75, 1);\n'+
+            '}\n';
+
+            let shady = new shader_t(GL, vertCode, fragCode);
+            
+            GL.bindBuffer(GL.ARRAY_BUFFER, vertex_buffer);
+            GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, index_buffer);
+            GL.vertexAttribPointer(0, 3, GL.FLOAT, false, 0, 0);
+            GL.enableVertexAttribArray(0);
+           
+            GL.useProgram(shady.program);
+            GL.drawElements(GL.TRIANGLES, strides.indexes.length, GL.UNSIGNED_SHORT, 0);
+            GL.useProgram(null);
+            
+            GL.disableVertexAttribArray(null);
+            GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+            GL.bindBuffer(GL.ARRAY_BUFFER, null);
+
         };
 
         window.onload = init_webgl;
