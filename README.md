@@ -1,2 +1,3 @@
 # fet
-site
+My github page.
+This is for educational purposes only.
