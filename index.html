@@ -24,14 +24,13 @@
         </style>
         <canvas id="webglex" width="1920" height="1080"></canvas>
         <script src="js/gl-matrix.js"></script>
-        <script src="js/achi.js"></script>
+        <script src="js/achi.min.js"></script>
         <script type="text/javascript">
 
         var stats = new Stats();
-        stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+        stats.showPanel( 0 );
         document.body.appendChild( stats.dom );
         
-        // ====== Setup canvas gl. ====== //
         let canvas = document.querySelector("#webglex");
         let ogl = canvas.getContext("webgl2");
         if(!ogl)
@@ -66,15 +65,12 @@
         let shader = new AchiShader(vdata, fdata);
         let render = new Achi(ogl);
 
-        // Render's the GUI (Dat GUI)
         render.gui();
 
-        // Clear's the screen.
         render.clear();
 
         let quad_width = 500;
         let quad_height = 500;
-        // Add's a new buffer to the VBO.
         render.quad(canvas.width / 2 - ( quad_width / 2), canvas.height / 2 - ( quad_height / 2 ), quad_width, quad_height);
         
         render.create();
