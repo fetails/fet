@@ -7,7 +7,6 @@ let myShader = new AchiShader(AchiContext, [
     "#version 300 es", // Vertex Shader
     "",
     "in vec3 coordinates;",
-    "out vec4 send_coords;",
     "",
     "void main() {",
     " gl_Position = vec4(coordinates, 1.0);",
@@ -19,10 +18,9 @@ let myShader = new AchiShader(AchiContext, [
     "precision mediump float;",
     "",
     "out vec4 color;",
-    "in vec4 send_coords;",
     "",
     "void main() {",
-    " color = vec4(send_coords.x + 0.25, send_coords.y + 0.25, 0.45, 1);",
+    " color = vec4(1, 0, 0, 1);",
     "}"
 ]);
 console.log("My Program: ", myShader.program);
