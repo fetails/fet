@@ -1,1 +1,135 @@
-<h4>Soon<br /><br />-Achi</h4>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Achi</title>
+    </head>
+    <body>
+        <canvas id="mycanvas" width="1920" height="1080"></canvas>
+        <style type="text/css">
+            body {
+                margin:0;
+                padding:0;
+            }
+            canvas {
+                width:100vw;
+                height:100vh;
+                display:block;
+            }
+        </style>
+        <script src="vendor/datgui/dat.gui.min.js"></script>
+        <script type="text/javascript">
+            let config = function()
+            {
+                this.version = "v0.1 - unstable";
+                this.clear_color = [20, 20, 20, 1.0];
+            };
+            class AchiShader
+            {
+                /**
+                * @param {Array} vertex - Vertex String Array
+                * @param {Array} fragment - Fragment String Array
+                * @param {Achi} achi - Achi Context
+                */
+                constructor(achi, vertex, fragment)
+                {
+                    let vs = achi.gl.createShader(achi.gl.VERTEX_SHADER);
+                    achi.gl.shaderSource(vs, vertex.join("\n"));
+                    achi.gl.compileShader(vs);
+
+                    let fs = achi.gl.createShader(achi.gl.FRAGMENT_SHADER);
+                    achi.gl.shaderSource(fs, fragment.join("\n"));
+                    achi.gl.compileShader(fs);
+
+                    let prog = achi.gl.createProgram();
+                    achi.gl.attachShader(prog, vs);
+                    achi.gl.attachShader(prog, fs);
+                    
+                    achi.gl.linkProgram(prog);
+                    achi.gl.validateProgram(prog);
+                    
+                    achi.gl.deleteShader(vs);
+                    achi.gl.deleteShader(fs);
+
+                    this.program = prog;
+                }
+            }
+            class Achi
+            {
+                /**
+                * @param {string} canvasId - Canvas ID
+                */
+                constructor(canvasId)
+                {
+                    this.canvas = document.querySelector(canvasId);
+                    this.gl = this.canvas.getContext("webgl2");
+                   
+                   // === Dat GUI === //
+                    this.config = new config();
+                    let gui = new dat.GUI();
+                    
+                    gui.add(this.config, "version");
+                    gui.addColor(this.config, "clear_color");
+                }
+
+                /**
+                * Clear's the screen.
+                */
+                clear()
+                {
+                    this.gl.clearColor(this.config.clear_color[0] / 255, this.config.clear_color[1] / 255, this.config.clear_color[2] / 255, this.config.clear_color[3]);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+                }
+                render()
+                {
+                    let shader = new AchiShader(this, [
+                            "#version 300 es", // Vertex Shader
+                            "",
+                            "in vec3 coordinates;",
+                            "out vec4 send_coords;",
+                            "",
+                            "void main() {",
+                            " gl_Position = vec4(coordinates, 1.0);",
+                            " send_coords = gl_Position;",
+                            "}"
+                        ], [
+                            "#version 300 es", // Fragment Shader
+                            "",
+                            "precision mediump float;",
+                            "",
+                            "out vec4 color;",
+                            "in vec4 send_coords;",
+                            "",
+                            "void main() {",
+                            " color = vec4(send_coords.x + 0.25, send_coords.y + 0.25, 0.45, 1);",
+                            "}"
+                        ]);
+                    let buffer = [
+                        0.0, 0.0, 0.0,
+                        -0.5, -0.5, 0.0,
+                        0.5, -0.5, 0.0
+                    ];
+                    let vbo = this.gl.createBuffer();
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vbo);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(buffer), this.gl.STATIC_DRAW);
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vbo);
+                    this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, this.gl.FALSE, 0, 0);
+                    this.gl.enableVertexAttribArray(0);
+
+                    this.gl.useProgram(shader.program);
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
+                    this.gl.useProgram(null);
+
+                    this.gl.disableVertexAttribArray(0);
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+                }
+            }
+
+            let achi = new Achi("#mycanvas");
+            achi.clear();
+
+            achi.render();
+        </script>
+    </body>
+</html>
