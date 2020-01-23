@@ -4,7 +4,7 @@
         <link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
         <script src="js/jquery.min.js"></script>
         <script src="js/dat.gui.min.js"></script>
-        <script src="js/stats.js"></script>
+        <script src="js/stats.min.js"></script>
         <title>WebGL &bull; Achi</title>
     </head>
     <body>
@@ -22,6 +22,8 @@
             }
         </style>
         <canvas id="webglex" width="1920" height="1080"></canvas>
+        <script src="js/gl-matrix.js"></script>
+        <script src="js/achi.js"></script>
         <script type="text/javascript">
 
         var stats = new Stats();
@@ -36,155 +38,18 @@
             alert("Your browser does not support WebGL 2");
         }
 
-        class AchiConfig
-        {
-            constructor()
-            {
-                this.message = "achi v0.2";
-                this.clearCol = [0,0,0,1];
-                this.showLines = false;
-                this.animate = false;
-                this.alphaModifier = 0.50;
-            }
-        }
-
-        class AchiVertex
-        {
-            constructor(buffer)
-            {
-                this.vertex = buffer;
-            }
-        }
-
-        class AchiShaderExperimental
-        {
-            constructor(vertex)
-            {
-                let gl = ogl;
-                this.vdata = vertex;
-                let vs = gl.createShader(ogl.VERTEX_SHADER);
-                ogl.shaderSource(vs, vertex);
-                ogl.compileShader(vs);
-
-                if(!ogl.getShaderParameter(vs, ogl.COMPILE_STATUS))
-                {
-                    console.log("error.");
-                }
-            }
-        }
-
-        class AchiShader
-        {
-            constructor(vertex, fragment)
-            {
-                this.gl = ogl;
-                let gl = this.gl;
-
-                let vs = gl.createShader(gl.VERTEX_SHADER);
-                gl.shaderSource(vs, vertex);
-                gl.compileShader(vs);
-
-                let fs = gl.createShader(gl.FRAGMENT_SHADER);
-                gl.shaderSource(fs, fragment);
-                gl.compileShader(fs);
-
-                let prog = gl.createProgram();
-                gl.attachShader(prog, vs);
-                gl.attachShader(prog, fs);
-                gl.linkProgram(prog);
-                gl.validateProgram(prog);
-                gl.deleteShader(vs);
-                gl.deleteShader(fs);
-                this.program = prog;
-            }
-
-            uniform_float(name, val)
-            {
-                let gl = this.gl;
-                gl.uniform1f(gl.getUniformLocation(this.program, name), val);
-            }
-
-            bind()
-            {
-                let gl = this.gl;
-                gl.useProgram(this.program);
-            }
-
-            unbind()
-            {
-                let gl = this.gl;
-                gl.useProgram(null);
-            }
-        }
-        class Achi
-        {
-            constructor(gl)
-            {
-                this.gl = gl;
-                this.options = new AchiConfig();
-            }
-            gui()
-            {
-                let gui = new dat.GUI();
-                gui.add(this.options, "message");
-                gui.add(this.options, "showLines");
-                gui.addColor(this.options, "clearCol");
-            }
-            clear()
-            {
-                stats.begin();
-                stats.end();
-                let gl = this.gl;
-                gl.clearColor(this.options.clearCol[0] / 255, this.options.clearCol[1] / 255, this.options.clearCol[2] / 255, this.options.clearCol[3] / 255);
-                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-                gl.viewport(0, 0, canvas.width, canvas.height);
-            }
-            add(buffer)
-            {
-                let gl = this.gl;
-                this.buffer = buffer.vertex;
-                this.vbo = gl.createBuffer();
-                
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.buffer), gl.STATIC_DRAW);
-                gl.bindBuffer(gl.ARRAY_BUFFER, null);
-            }
-            begin()
-            {
-                let gl = this.gl;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
-                gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 0, 0);
-                gl.enableVertexAttribArray(0);
-            }
-            end()
-            {
-                let gl = this.gl;
-                gl.disableVertexAttribArray(0);
-                gl.bindBuffer(gl.ARRAY_BUFFER, null);
-            }
-            render()
-            {
-                let gl = this.gl;
-                if(this.options.showLines)
-                    gl.drawArrays(gl.LINE_LOOP, 0, 3);
-                else
-                    gl.drawArrays(gl.TRIANGLES, 0, 3);
-            }
-            del()
-            {
-                let gl = this.gl;
-                gl.deleteBuffer(this.vbo);
-            }
-        };
-
         let vdata = 
         "#version 300 es\n\n" +
         
         "in vec3 coords;\n" +
         "out vec3 sent_coords;\n\n" +
         
+        "uniform mat4 view_matrix;\n" +
+        "uniform mat4 proj_matrix;\n" +
+        "uniform mat4 world_matrix;\n\n" +
+
         "void main() {\n" + 
-        " gl_Position = vec4(coords, 1.0);\n" +
+        " gl_Position = proj_matrix * view_matrix * world_matrix * vec4(coords, 1.0);\n" +
         " sent_coords = coords;\n" +
         "}";
 
@@ -202,27 +67,46 @@
         let shader = new AchiShader(vdata, fdata);
         let render = new Achi(ogl);
 
+        // Render's the GUI (Dat GUI)
         render.gui();
 
+        // Clear's the screen.
         render.clear();
 
+        // Add's a new buffer to the VBO.
         render.add(new AchiVertex([
             0.0, 0.5, 0.0,
             -0.5, -0.5, 0.0,
             0.5, -0.5, 0.0
         ]));
 
+        let m_world_matrix = new Float32Array(16);
+        let m_view_matrix = new Float32Array(16);
+        let m_projection_matrix = new Float32Array(16);
 
+        glMatrix.mat4.identity(m_world_matrix);
+        glMatrix.mat4.lookAt(m_view_matrix, [0, 0, -2], [0, 0, 0], [0, 1, 0]);
+        glMatrix.mat4.perspective(m_projection_matrix, glMatrix.glMatrix.toRadian(40), canvas.width / canvas.height, 0.1, 1000.0);
+        
+        let identity_matrix = new Float32Array(16);
+        glMatrix.mat4.identity(identity_matrix);
 
+        let angle = 0;
+
+        render.begin();
+        shader.bind();
+        shader.uniform_matrix4f("view_matrix", m_view_matrix);
+        shader.uniform_matrix4f("world_matrix", m_world_matrix);
+        shader.uniform_matrix4f("proj_matrix", m_projection_matrix);
         let loop = function(time)
         {
+            angle = performance.now() / 1000 / 6 * 2 * Math.PI;
             render.clear();
-           
-            render.begin();
-            shader.bind();
+            
+            
+            glMatrix.mat4.rotate(m_world_matrix, identity_matrix, angle, [1, 1, 1]);
+            shader.uniform_matrix4f("world_matrix", m_world_matrix);
             render.render();
-            shader.unbind();
-            render.end();
             
             requestAnimationFrame( loop );
         };
