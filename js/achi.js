@@ -12,9 +12,10 @@ class AchiConfig
 
 class AchiVertex
 {
-    constructor(buffer)
+    constructor(buffer, indices)
     {
         this.vertex = buffer;
+        this.indices = indices;
     }
 }
 
@@ -99,21 +100,34 @@ class Achi
         gl.clearColor(this.options.clearCol[0] / 255, this.options.clearCol[1] / 255, this.options.clearCol[2] / 255, this.options.clearCol[3] / 255);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.enable(gl.DEPTH_TEST);
     }
     add(buffer)
     {
         let gl = this.gl;
         this.buffer = buffer.vertex;
+        this.indices = buffer.indices;
+        this.indsize = buffer.indices.length;
+
         this.vbo = gl.createBuffer();
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.buffer), gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        this.ibo = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+        console.log("[WebGL] Indices:", this.indsize);
     }
     begin()
     {
         let gl = this.gl;
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
+
         gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 0, 0);
         gl.enableVertexAttribArray(0);
     }
@@ -121,15 +135,16 @@ class Achi
     {
         let gl = this.gl;
         gl.disableVertexAttribArray(0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
     render()
     {
         let gl = this.gl;
         if(this.options.showLines)
-            gl.drawArrays(gl.LINE_LOOP, 0, 3);
+            gl.drawElements(gl.LINE_STRIP, this.indices.length, gl.UNSIGNED_SHORT, 0);
         else
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0);
     }
     del()
     {

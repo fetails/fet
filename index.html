@@ -75,9 +75,63 @@
 
         // Add's a new buffer to the VBO.
         render.add(new AchiVertex([
-            0.0, 0.5, 0.0,
-            -0.5, -0.5, 0.0,
-            0.5, -0.5, 0.0
+        -1.0, 1.0, -1.0,   
+		-1.0, 1.0, 1.0,    
+		1.0, 1.0, 1.0,     
+		1.0, 1.0, -1.0,    
+
+		// Left
+		-1.0, 1.0, 1.0,    
+		-1.0, -1.0, 1.0,   
+		-1.0, -1.0, -1.0,  
+		-1.0, 1.0, -1.0,   
+
+		// Right
+		1.0, 1.0, 1.0,    
+		1.0, -1.0, 1.0,   
+		1.0, -1.0, -1.0,  
+		1.0, 1.0, -1.0,   
+
+		// Front
+		1.0, 1.0, 1.0,    
+		1.0, -1.0, 1.0,   
+		-1.0, -1.0, 1.0,   
+		-1.0, 1.0, 1.0,    
+
+		// Back
+		1.0, 1.0, -1.0,    
+		1.0, -1.0, -1.0,   
+		-1.0, -1.0, -1.0,  
+		-1.0, 1.0, -1.0,   
+
+		// Bottom
+		-1.0, -1.0, -1.0,  
+		-1.0, -1.0, 1.0,   
+		1.0, -1.0, 1.0,    
+		1.0, -1.0, -1.0
+        ], [
+        0, 1, 2,
+		0, 2, 3,
+
+		// Left
+		5, 4, 6,
+		6, 4, 7,
+
+		// Right
+		8, 9, 10,
+		8, 10, 11,
+
+		// Front
+		13, 12, 14,
+		15, 14, 12,
+
+		// Back
+		16, 17, 18,
+		16, 18, 19,
+
+		// Bottom
+		21, 20, 22,
+		22, 20, 23
         ]));
 
         let m_world_matrix = new Float32Array(16);
@@ -85,7 +139,7 @@
         let m_projection_matrix = new Float32Array(16);
 
         glMatrix.mat4.identity(m_world_matrix);
-        glMatrix.mat4.lookAt(m_view_matrix, [0, 0, -2], [0, 0, 0], [0, 1, 0]);
+        glMatrix.mat4.lookAt(m_view_matrix, [0, 0, -15], [0, 0, 0], [0, 1, 0]);
         glMatrix.mat4.perspective(m_projection_matrix, glMatrix.glMatrix.toRadian(40), canvas.width / canvas.height, 0.1, 1000.0);
         
         let identity_matrix = new Float32Array(16);
@@ -100,11 +154,11 @@
         shader.uniform_matrix4f("proj_matrix", m_projection_matrix);
         let loop = function(time)
         {
-            angle = performance.now() / 1000 / 6 * 2 * Math.PI;
+            angle = performance.now() / 1000 / 2 * 2 * Math.PI;
             render.clear();
             
             
-            glMatrix.mat4.rotate(m_world_matrix, identity_matrix, angle, [1, 1, 1]);
+            glMatrix.mat4.rotate(m_world_matrix, identity_matrix, angle, [-1, -1, 0]);
             shader.uniform_matrix4f("world_matrix", m_world_matrix);
             render.render();
             
