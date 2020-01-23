@@ -7,12 +7,12 @@ Usage for renderer & setting up canvas.
 ```
 Once you have setup the canvas, it's about to call Achi!
 ```javascript
-    let achi = new Achi("myCanvas");
+let achi = new Achi("myCanvas");
 
-    // Clear our window!
-    achi.clear();
+// Clear our window!
+achi.clear();
 
-    // Now you are all set!
+// Now you are all set!
 ```
 ## Usage Shaders
 ```javascript
