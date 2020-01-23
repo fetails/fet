@@ -2,7 +2,7 @@
 Achi is an open source rendering framework that uses webgl.
 ## Usage
 Usage for shaders:
-```
+```javascript
 let myShader = new AchiShader(AchiContext, [
     "#version 300 es", // Vertex Shader
     "",
