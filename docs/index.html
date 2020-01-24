@@ -184,7 +184,7 @@
                             "",
                             "void main() {",
                             " gl_Position = vec4(coordinates, 1.0);",
-                            " send_coords = vec3(coordinates.x + 0.45, coordinates.y + 0.45, coordinates.z + 0.25);",
+                            " send_coords = vec3(coordinates.x, coordinates.y, coordinates.z + 0.25);",
                             "}"
                         ], [
                             "#version 300 es", // Fragment Shader
@@ -194,18 +194,24 @@
                             "",
                             "out vec4 color;",
                             "in vec3 send_coords;",
-                            "",
+                            "uniform float modifier;",
                             "",
                             "void main() {",
-                            " color = vec4(send_coords.x, send_coords.y, send_coords.z, 1);",
+                            " color = vec4(send_coords.x + modifier, send_coords.y - modifier, send_coords.z, 1);",
                             "}"
                         ]);
 
             let loop = function()
             {
+                if(achi.config.modifier > 1.00)
+                    achi.config.modifier = 0.00;
+
+                achi.config.modifier += 0.004;
+
                 achi.clear();
                 achi.begin();
                 shader.begin();
+                shader.send_float("modifier", achi.config.modifier);
                 achi.render();
                 shader.end();
                 achi.end();
