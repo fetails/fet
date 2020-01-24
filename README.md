@@ -3,7 +3,7 @@ Achi is an open source rendering framework that uses webgl.
 ## Usage Renderer
 Usage for renderer & setting up canvas.
 ```html
-    <canvas id="myCanvas"></canvas>
+<canvas id="myCanvas"></canvas>
 ```
 Once you have setup the canvas, it's about to call Achi!
 ```javascript
@@ -16,6 +16,7 @@ achi.clear();
 ```
 ## Usage Shaders
 ```javascript
+// Example shader
 let myShader = new AchiShader(AchiContext, [
     "#version 300 es", // Vertex Shader
     "",
