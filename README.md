@@ -79,6 +79,7 @@ let loop = function()
     achi.end();
     requestAnimationFrame(loop);
 };
-loop();```
+loop();
+```
 ## Screenshot
 ![Achi Early](https://i.imgur.com/YksWqN0.png)
