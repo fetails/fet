@@ -4,7 +4,7 @@
         <title>Achi</title>
     </head>
     <body>
-        <canvas id="mycanvas" width="1920" height="1080"></canvas>
+        <canvas id="mycanvas"></canvas>
         <style type="text/css">
             body {
                 margin:0;
@@ -92,6 +92,10 @@
                 constructor(canvasId)
                 {
                     this.canvas = document.querySelector(canvasId);
+                    
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+
                     this.gl = this.canvas.getContext("webgl2");
                     if(!this.gl)
                     {
@@ -184,7 +188,7 @@
                             "",
                             "void main() {",
                             " gl_Position = vec4(coordinates, 1.0);",
-                            " send_coords = vec3(coordinates.x, coordinates.y, coordinates.z + 0.25);",
+                            " send_coords = coordinates;",
                             "}"
                         ], [
                             "#version 300 es", // Fragment Shader
@@ -194,24 +198,22 @@
                             "",
                             "out vec4 color;",
                             "in vec3 send_coords;",
-                            "uniform float modifier;",
                             "",
                             "void main() {",
-                            " color = vec4(send_coords.x + modifier, send_coords.y - modifier, send_coords.z, 1);",
+                            " color = vec4(send_coords.x - 0.75, send_coords.y + 0.75, send_coords.z + 0.25, 1);",
                             "}"
                         ]);
 
+            window.addEventListener("resize", () => {
+                achi.canvas.width = window.innerWidth;
+                achi.canvas.height = window.innerHeight;
+            });
+
             let loop = function()
             {
-                if(achi.config.modifier > 1.00)
-                    achi.config.modifier = 0.00;
-
-                achi.config.modifier += 0.004;
-
                 achi.clear();
                 achi.begin();
                 shader.begin();
-                shader.send_float("modifier", achi.config.modifier);
                 achi.render();
                 shader.end();
                 achi.end();
