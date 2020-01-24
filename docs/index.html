@@ -22,6 +22,8 @@
             {
                 this.version = "v0.2 - unstable";
                 this.clear_color = [20, 20, 20, 1.0];
+                this.modifier = 0.00;
+                this.draw_lines = false;
             };
             class AchiShader
             {
@@ -32,25 +34,54 @@
                 */
                 constructor(achi, vertex, fragment)
                 {
-                    let vs = achi.gl.createShader(achi.gl.VERTEX_SHADER);
-                    achi.gl.shaderSource(vs, vertex.join("\n"));
-                    achi.gl.compileShader(vs);
+                    this.gl = achi.gl;
 
-                    let fs = achi.gl.createShader(achi.gl.FRAGMENT_SHADER);
-                    achi.gl.shaderSource(fs, fragment.join("\n"));
-                    achi.gl.compileShader(fs);
+                    let vsCode = vertex.join("\n");
+                    let fsCode = fragment.join("\n");
 
-                    let prog = achi.gl.createProgram();
-                    achi.gl.attachShader(prog, vs);
-                    achi.gl.attachShader(prog, fs);
+                    console.log("Vertex: ", vsCode);
+                    console.log("Fragment: ", fsCode);
+
+                    let vs = this.gl.createShader(this.gl.VERTEX_SHADER);
+                    this.gl.shaderSource(vs, vsCode);
+                    this.gl.compileShader(vs);
+
+                    let fs = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+                    this.gl.shaderSource(fs, fsCode);
+                    this.gl.compileShader(fs);
+
+                    let prog = this.gl.createProgram();
+                    this.gl.attachShader(prog, vs);
+                    this.gl.attachShader(prog, fs);
                     
-                    achi.gl.linkProgram(prog);
-                    achi.gl.validateProgram(prog);
+                    this.gl.linkProgram(prog);
+                    this.gl.validateProgram(prog);
                     
-                    achi.gl.deleteShader(vs);
-                    achi.gl.deleteShader(fs);
+                    this.gl.deleteShader(vs);
+                    this.gl.deleteShader(fs);
 
                     this.program = prog;
+
+                }
+                /**
+                * Bind's the shader
+                */
+                begin()
+                {
+                    this.gl.useProgram(this.program);
+                }
+                /**
+                * Unbind's the shader
+                */
+                end()
+                {
+                    this.gl.useProgram(null);
+                }
+
+                send_float(name, val)
+                {
+                    let sender = val;
+                    this.gl.uniform1f(this.gl.getUniformLocation(this.program, name), sender);
                 }
             }
             class Achi
@@ -62,6 +93,11 @@
                 {
                     this.canvas = document.querySelector(canvasId);
                     this.gl = this.canvas.getContext("webgl2");
+                    if(!this.gl)
+                    {
+                        alert("[Achi] Error! Your browser does not support WebGL2. :(");
+                        return;
+                    };
                    
                    // === Dat GUI === //
                     this.config = new config();
@@ -69,8 +105,8 @@
                     
                     gui.add(this.config, "version");
                     gui.addColor(this.config, "clear_color");
+                    gui.add(this.config, "draw_lines");
                 }
-
                 /**
                 * Clear's the screen.
                 */
@@ -78,58 +114,105 @@
                 {
                     this.gl.clearColor(this.config.clear_color[0] / 255, this.config.clear_color[1] / 255, this.config.clear_color[2] / 255, this.config.clear_color[3]);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+                    this.gl.enable(this.gl.DEPTH_TEST);
+                    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 }
+                /**
+                * Begin's the render sequence
+                */
+                begin()
+                {
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.ibo);
+                    this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, this.gl.FALSE, 0, 0);
+                    this.gl.enableVertexAttribArray(0);
+                }
+                /**
+                * End's the render sequence
+                */
+                end()
+                {
+                    this.gl.disableVertexAttribArray(0);
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, null);
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+                }
+                /**
+                * Create's the VBO & IBO to store data which we will later use to draw our elements.
+                */
+                create()
+                {
+                    this.buffer = [
+                        0.0, 0.0, 0.0,
+                        -0.5, -0.5, 0.0,
+                        0.5, -0.5, 0.0
+                    ];
+
+                    this.indices = [
+                        0, 1, 2,
+                        1, 2, 3
+                    ];
+
+                    this.vbo = this.gl.createBuffer();
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.buffer), this.gl.STATIC_DRAW);
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+
+                    this.ibo = this.gl.createBuffer();
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.ibo);
+                    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), this.gl.STATIC_DRAW);
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, null);
+                }
+                /**
+                * Render's our elements.
+                */
                 render()
                 {
-                    let shader = new AchiShader(this, [
+                    this.gl.drawElements(this.config.draw_lines == true ? this.gl.LINE_LOOP : this.gl.TRIANGLES, this.indices.length, this.gl.UNSIGNED_SHORT, 0);
+                    //this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
+                }
+            }
+            let achi = new Achi("#mycanvas");
+            achi.create();
+
+            let shader = new AchiShader(achi, [
                             "#version 300 es", // Vertex Shader
                             "",
+                            "",
                             "in vec3 coordinates;",
-                            "out vec4 send_coords;",
+                            "out vec3 send_coords;",
+                            "",
                             "",
                             "void main() {",
                             " gl_Position = vec4(coordinates, 1.0);",
-                            " send_coords = gl_Position;",
+                            " send_coords = vec3(coordinates.x + 0.45, coordinates.y + 0.45, coordinates.z + 0.25);",
                             "}"
                         ], [
                             "#version 300 es", // Fragment Shader
                             "",
                             "precision mediump float;",
+                            "precision mediump int;",
                             "",
                             "out vec4 color;",
-                            "in vec4 send_coords;",
+                            "in vec3 send_coords;",
+                            "",
                             "",
                             "void main() {",
-                            " color = vec4(send_coords.x + 0.25, send_coords.y + 0.25, 0.45, 1);",
+                            " color = vec4(send_coords.x, send_coords.y, send_coords.z, 1);",
                             "}"
                         ]);
-                    let buffer = [
-                        0.0, 0.0, 0.0,
-                        -0.5, -0.5, 0.0,
-                        0.5, -0.5, 0.0
-                    ];
-                    let vbo = this.gl.createBuffer();
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vbo);
-                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(buffer), this.gl.STATIC_DRAW);
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
 
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vbo);
-                    this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, this.gl.FALSE, 0, 0);
-                    this.gl.enableVertexAttribArray(0);
+            let loop = function()
+            {
+                achi.clear();
+                achi.begin();
+                shader.begin();
+                achi.render();
+                shader.end();
+                achi.end();
 
-                    this.gl.useProgram(shader.program);
-                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
-                    this.gl.useProgram(null);
-
-                    this.gl.disableVertexAttribArray(0);
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
-                }
-            }
-
-            let achi = new Achi("#mycanvas");
-            achi.clear();
-
-            achi.render();
+                requestAnimationFrame(loop);
+            };
+            loop();
         </script>
     </body>
 </html>
