@@ -1,6 +1,6 @@
 let config = function()
 {
-    this.version = "v0.2 - unstable";
+    this.version = "v0.3 - unstable";
     this.clear_color = [20, 20, 20, 1.0];
     this.modifier = 0.00;
     this.draw_lines = false;
