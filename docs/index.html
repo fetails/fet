@@ -2,6 +2,7 @@
 <html>
     <head>
         <title>Achi</title>
+        <script src="vendor/glMatrix/gl-matrix.js"></script>
     </head>
     <body>
         <canvas id="mycanvas"></canvas>
@@ -19,15 +20,18 @@
         <script src="vendor/datgui/dat.gui.min.js"></script>
         <script src="js/achi.js"></script>
         <script type="text/javascript">
-            let achi = new Achi("#mycanvas");
+            let achi = new Achi("#mycanvas", true);
             let vs = [
                 "#version 300 es // Vertex Shader",
                 "",
                 "in vec3 coordinates;",
                 "out vec3 send_coords;",
+                "uniform mat4 m_world_matrix;",
+                "uniform mat4 m_view_matrix;",
+                "uniform mat4 m_proj_matrix;",
                 "",
                 "void main() {",
-                " gl_Position = vec4(coordinates, 1.0);",
+                " gl_Position = m_proj_matrix * m_view_matrix * m_world_matrix * vec4(coordinates, 1.0);",
                 " send_coords = coordinates;",
                 "}"
             ].join("\n");
@@ -48,25 +52,113 @@
 
             let shader = new AchiShader(achi, vs, fs);
 
-            let show_example = true;
-            achi.create( show_example /* true = (Display example), false = (Don't display example)*/);
+            achi.buff(new AchiBuffer([
+            -1.0, 1.0, -1.0,   0.5, 0.5, 0.5,
+		-1.0, 1.0, 1.0,    0.5, 0.5, 0.5,
+		1.0, 1.0, 1.0,     0.5, 0.5, 0.5,
+		1.0, 1.0, -1.0,    0.5, 0.5, 0.5,
 
+		// Left
+		-1.0, 1.0, 1.0,    0.75, 0.25, 0.5,
+		-1.0, -1.0, 1.0,   0.75, 0.25, 0.5,
+		-1.0, -1.0, -1.0,  0.75, 0.25, 0.5,
+		-1.0, 1.0, -1.0,   0.75, 0.25, 0.5,
+
+		// Right
+		1.0, 1.0, 1.0,    0.25, 0.25, 0.75,
+		1.0, -1.0, 1.0,   0.25, 0.25, 0.75,
+		1.0, -1.0, -1.0,  0.25, 0.25, 0.75,
+		1.0, 1.0, -1.0,   0.25, 0.25, 0.75,
+
+		// Front
+		1.0, 1.0, 1.0,    1.0, 0.0, 0.15,
+		1.0, -1.0, 1.0,    1.0, 0.0, 0.15,
+		-1.0, -1.0, 1.0,    1.0, 0.0, 0.15,
+		-1.0, 1.0, 1.0,    1.0, 0.0, 0.15,
+
+		// Back
+		1.0, 1.0, -1.0,    0.0, 1.0, 0.15,
+		1.0, -1.0, -1.0,    0.0, 1.0, 0.15,
+		-1.0, -1.0, -1.0,    0.0, 1.0, 0.15,
+		-1.0, 1.0, -1.0,    0.0, 1.0, 0.15,
+
+		// Bottom
+		-1.0, -1.0, -1.0,   0.5, 0.5, 1.0,
+		-1.0, -1.0, 1.0,    0.5, 0.5, 1.0,
+		1.0, -1.0, 1.0,     0.5, 0.5, 1.0,
+		1.0, -1.0, -1.0,    0.5, 0.5, 1.0,
+            ],[
+                // Top
+		0, 1, 2,
+		0, 2, 3,
+
+		// Left
+		5, 4, 6,
+		6, 4, 7,
+
+		// Right
+		8, 9, 10,
+		8, 10, 11,
+
+		// Front
+		13, 12, 14,
+		15, 14, 12,
+
+		// Back
+		16, 17, 18,
+		16, 18, 19,
+
+		// Bottom
+		21, 20, 22,
+		22, 20, 23
+            ]))
+
+            achi.create( );
+
+             // Step 1: Start the Renderer.
+            achi.begin();
+
+            shader.begin();
+
+            let x = 0;
+            let y = 0;
+            let should_rotate = false;
+            const rect = achi.canvas.getBoundingClientRect();
+            window.addEventListener("mousemove", (e) => {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            });
+
+
+
+            let world_matrix = new Float32Array(16);
+            let view_matrix = new Float32Array(16);
+            let proj_matrix = new Float32Array(16);
+            
+            glMatrix.mat4.identity(world_matrix);
+            glMatrix.mat4.lookAt(view_matrix, [0, 0, -50], [0, 0, 0], [0, 1, 0]);
+            glMatrix.mat4.perspective(proj_matrix, glMatrix.glMatrix.toRadian(40), achi.canvas.width / achi.canvas.height, 0.1, 1000.0);
+
+            shader.uniform_mat4("m_world_matrix", world_matrix);
+            shader.uniform_mat4("m_view_matrix", view_matrix);
+            shader.uniform_mat4("m_proj_matrix", proj_matrix);
+
+            let identity_matrix = new Float32Array(16);
+            glMatrix.mat4.identity(identity_matrix);
+            let angle = 0;
             let loop = function()
             {
+                angle = performance.now() / 1000 / 6 * 2 * Math.PI;
+                glMatrix.mat4.lookAt(view_matrix, [0, 0, achi.config.zoom], [x / ( achi.canvas.width / 3 ), y / ( achi.canvas.height / 3 ), 0], [0, 1, 0]);
+                glMatrix.mat4.rotate(world_matrix, identity_matrix, angle, [1, 1, 1]);
+                shader.uniform_mat4("m_world_matrix", world_matrix);
+                shader.uniform_mat4("m_view_matrix", view_matrix);
                 achi.clear();
-                
-                // Step 1: Start the Renderer.
-                achi.begin();
-
-                shader.begin();
-
+//
+//
                 // Step 2: Render all the objects!
                 achi.render();
-
-                shader.end();
-                
-                // And the final step, shut it down!
-                achi.end();
+//
                 requestAnimationFrame(loop);
             };
             loop();

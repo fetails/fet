@@ -3,6 +3,7 @@ let config = function()
     this.version = "v0.3 - unstable";
     this.clear_color = [20, 20, 20, 1.0];
     this.modifier = 0.00;
+    this.zoom = -5;
     this.draw_lines = false;
 };
 
@@ -33,6 +34,22 @@ let AchiObject = function(url = "john.doe")
             xhr.send();
         });
 };
+
+let AchiNormalObject = async function(url, cb)
+{
+    let xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.onload = function()
+    {
+        if(xhr.status < 200 || xhr.status > 299)
+        {
+            cb("error.");
+        } else {
+            cb(null, xhr.responseText);
+        }
+    };
+    xhr.send();
+}
 class AchiShader
 {
     /**
@@ -74,11 +91,16 @@ class AchiShader
     {
         this.gl.useProgram(null);
     }
+    uniform_mat4(name, val)
+    {
+        this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.program, name), false, val);
+    }
     send_float(name, val)
     {
         let sender = val;
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, name), sender);
     }
+    
 }
 class AchiBuffer
 {
@@ -115,6 +137,7 @@ class Achi
         gui.add(this.config, "version");
         gui.addColor(this.config, "clear_color");
         gui.add(this.config, "draw_lines");
+        gui.add(this.config, "zoom");
         if(fix_screen)
         {
             window.addEventListener("resize", () => {
@@ -140,7 +163,7 @@ class Achi
     {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
         this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.ibo);
-        this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, this.gl.FALSE, 0, 0);
+        this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, this.gl.FALSE, 6 * Float32Array.BYTES_PER_ELEMENT, 0);
         this.gl.enableVertexAttribArray(0);
     }
     /**
@@ -197,3 +220,22 @@ class Achi
         //this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
     }
 }
+
+function replaceStr(str, find, replace) {
+    for (var i = 0; i < find.length; i++) {
+        str = str.replace(new RegExp(find[i], 'gi'), replace[i]);
+    }
+    return str;
+}
+
+let loadObj = async function()
+{
+    let file = await AchiObject("vendor/obj/cube.obj");
+    let spl = file;
+
+    let find = ["v", "vn", "n", "f", "//", " "];
+    let replace = ["", "", "", "", ",", " "];
+    spl = replaceStr(spl, find, replace);
+
+    console.log(spl);
+};
