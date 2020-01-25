@@ -25,29 +25,51 @@
                 this.modifier = 0.00;
                 this.draw_lines = false;
             };
+            
+            let AchiObject = function(url = "john.doe")
+            {
+                return new Promise((resolve, reject) => {
+                        let xhr = new XMLHttpRequest();
+                        xhr.open("GET", url);
+                        xhr.onload = function()
+                        {
+                            if(this.status >= 200 && this.status < 300)
+                            {
+                                resolve(xhr.responseText);
+                            } else {
+                                reject({
+                                    status: this.status,
+                                    statusText: xhr.statusText
+                                });
+                            }                        
+                        };
+                        xhr.onerror = function()
+                        {
+                            reject({
+                                status: this.status,
+                                statusText: xhr.statusText
+                            });
+                        };
+                        xhr.send();
+                    });
+            };
             class AchiShader
             {
                 /**
-                * @param {Array} vertex - Vertex String Array
-                * @param {Array} fragment - Fragment String Array
+                * @param {AchiObject} vertex - Path to vertex shader
+                * @param {AchiObject} fragment - Path to fragment shader
                 * @param {Achi} achi - Achi Context
                 */
                 constructor(achi, vertex, fragment)
                 {
                     this.gl = achi.gl;
 
-                    let vsCode = vertex.join("\n");
-                    let fsCode = fragment.join("\n");
-
-                    console.log("Vertex: ", vsCode);
-                    console.log("Fragment: ", fsCode);
-
                     let vs = this.gl.createShader(this.gl.VERTEX_SHADER);
-                    this.gl.shaderSource(vs, vsCode);
+                    this.gl.shaderSource(vs, vertex);
                     this.gl.compileShader(vs);
 
                     let fs = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-                    this.gl.shaderSource(fs, fsCode);
+                    this.gl.shaderSource(fs, fragment);
                     this.gl.compileShader(fs);
 
                     let prog = this.gl.createProgram();
@@ -84,17 +106,28 @@
                     this.gl.uniform1f(this.gl.getUniformLocation(this.program, name), sender);
                 }
             }
+            class AchiBuffer
+            {
+                constructor(vertices, indices)
+                {
+                    this.vertices = vertices;
+                    this.indices = indices;
+                }
+            }
             class Achi
             {
                 /**
                 * @param {string} canvasId - Canvas ID
                 */
-                constructor(canvasId)
+                constructor(canvasId, fix_screen = true)
                 {
                     this.canvas = document.querySelector(canvasId);
                     
                     this.canvas.width = window.innerWidth;
                     this.canvas.height = window.innerHeight;
+
+                    this.buffer = [];
+                    this.indices = [];
 
                     this.gl = this.canvas.getContext("webgl2");
                     if(!this.gl)
@@ -110,6 +143,14 @@
                     gui.add(this.config, "version");
                     gui.addColor(this.config, "clear_color");
                     gui.add(this.config, "draw_lines");
+
+                    if(fix_screen)
+                    {
+                        window.addEventListener("resize", () => {
+                            this.canvas.width = window.innerWidth;
+                            this.canvas.height = window.innerHeight;
+                        });
+                    }
                 }
                 /**
                 * Clear's the screen.
@@ -141,29 +182,41 @@
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
                 }
                 /**
+                * @param {AchiBuffer} achiBuffer - AchiBuffer -> Store vertices & indices.
+                */
+                buff(achiBuffer)
+                {
+                    this.buffer.push(achiBuffer.vertices);
+                    this.indices.push(achiBuffer.indices);
+                }
+                /**
                 * Create's the VBO & IBO to store data which we will later use to draw our elements.
                 */
-                create()
+                create(show_example = false)
                 {
-                    this.buffer = [
-                        0.0, 0.0, 0.0,
-                        -0.5, -0.5, 0.0,
-                        0.5, -0.5, 0.0
-                    ];
-
-                    this.indices = [
-                        0, 1, 2,
-                        1, 2, 3
-                    ];
+                    
+                    if(show_example)
+                    {
+                        this.buff(new AchiBuffer([
+                            0.0, 0.0, 0.0,
+                            -0.5, -0.5, 0.0,
+                            0.5, -0.5, 0.0
+                        ],[
+                            0, 1, 2,
+                            1, 2, 3
+                        ]));
+                    };
+                    this.sorted_indices = [].concat.apply([], this.indices);
+                    this.sorted_buffers = [].concat.apply([], this.buffer);
 
                     this.vbo = this.gl.createBuffer();
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
-                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.buffer), this.gl.STATIC_DRAW);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.sorted_buffers), this.gl.STATIC_DRAW);
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
 
                     this.ibo = this.gl.createBuffer();
                     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.ibo);
-                    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), this.gl.STATIC_DRAW);
+                    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.sorted_indices), this.gl.STATIC_DRAW);
                     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, null);
                 }
                 /**
@@ -171,53 +224,59 @@
                 */
                 render()
                 {
-                    this.gl.drawElements(this.config.draw_lines == true ? this.gl.LINE_LOOP : this.gl.TRIANGLES, this.indices.length, this.gl.UNSIGNED_SHORT, 0);
+                    this.gl.drawElements(this.config.draw_lines == true ? this.gl.LINE_LOOP : this.gl.TRIANGLES, this.sorted_indices.length, this.gl.UNSIGNED_SHORT, 0);
                     //this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
                 }
             }
+
             let achi = new Achi("#mycanvas");
-            achi.create();
+            let vs = [
+                "#version 300 es // Vertex Shader",
+                "",
+                "in vec3 coordinates;",
+                "out vec3 send_coords;",
+                "",
+                "void main() {",
+                " gl_Position = vec4(coordinates, 1.0);",
+                " send_coords = coordinates;",
+                "}"
+            ].join("\n");
 
-            let shader = new AchiShader(achi, [
-                            "#version 300 es", // Vertex Shader
-                            "",
-                            "",
-                            "in vec3 coordinates;",
-                            "out vec3 send_coords;",
-                            "",
-                            "",
-                            "void main() {",
-                            " gl_Position = vec4(coordinates, 1.0);",
-                            " send_coords = coordinates;",
-                            "}"
-                        ], [
-                            "#version 300 es", // Fragment Shader
-                            "",
-                            "precision mediump float;",
-                            "precision mediump int;",
-                            "",
-                            "out vec4 color;",
-                            "in vec3 send_coords;",
-                            "",
-                            "void main() {",
-                            " color = vec4(send_coords.x - 0.75, send_coords.y + 0.75, send_coords.z + 0.25, 1);",
-                            "}"
-                        ]);
+            let fs = [
+                "#version 300 es // Fragment Shader",
+                "",
+                "precision mediump float;",
+                "precision mediump int;",
+                "",
+                "out vec4 color;",
+                "in vec3 send_coords;",
+                "",
+                "void main() {",
+                " color = vec4(send_coords.x - 0.75, send_coords.y + 0.75, send_coords.z + 0.25, 1);",
+                "}"
+            ].join("\n");
 
-            window.addEventListener("resize", () => {
-                achi.canvas.width = window.innerWidth;
-                achi.canvas.height = window.innerHeight;
-            });
+            let shader = new AchiShader(achi, vs, fs);
+
+            let show_example = true;
+            achi.create( show_example /* true = (Display example), false = (Don't display example)*/);
 
             let loop = function()
             {
                 achi.clear();
+                
+                // Step 1: Start the Renderer.
                 achi.begin();
-                shader.begin();
-                achi.render();
-                shader.end();
-                achi.end();
 
+                shader.begin();
+
+                // Step 2: Render all the objects!
+                achi.render();
+
+                shader.end();
+                
+                // And the final step, shut it down!
+                achi.end();
                 requestAnimationFrame(loop);
             };
             loop();
